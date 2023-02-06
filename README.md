@@ -14,3 +14,4 @@ This script will generate a real-time (or not) pyplot simulation of celestial bo
 python nbody.py
 ```
 
+![nbody](https://github.com/shaanhash/nbody/blob/main/nbody.png?raw=true)
