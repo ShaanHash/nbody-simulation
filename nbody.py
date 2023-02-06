@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def getAcceleration( position, mass, G, softening):
+def getAcceleration( position, mass, G, softening ):
     
     """
     pos is an N x 3 matrix of positions (3 spatial Dimensions for each N)
@@ -37,16 +37,44 @@ def getAcceleration( position, mass, G, softening):
     # Pack each acceleration vector and return the matrix
     return np.hstack((ax, ay, az))
 
+def getEnergy( position, mass, G, velocities ):
 
+    """
+    pos is an N x 3 matrix of positions (3 spatial Dimensions for each N)
+    mass is a N x 1 vector of masses (1 Mass dimension for each N)
+    G is Newtons Gravitational Constant 
+    velocities is a N x 3 matrix of velocities (3 dimensions for each N)
+    """
+
+    # Kn = 1/2 * M * V**2
+    kinetic_energy = 0.5 * np.sum(np.sum( mass * velocities**2))
+
+    x_positions = position[:, 0:1]
+    y_positions = position[:, 1:2]
+    z_positions = position[:, 2:3]
+
+    delta_x = x_positions.T - x_positions
+    delta_y = y_positions.T - y_positions
+    delta_z = z_positions.T - z_positions
+
+    # Calculate distances
+    inverse_r = np.sqrt(delta_x**2 + delta_y**2 + delta_z**2)
+    inverse_r[inverse_r>0] = 1.0/inverse_r[inverse_r>0]
+
+    # Calculate Pe from distances
+    potential_energy = G * np.sum(np.sum(np.triu(-(mass*mass.T)*inverse_r,1)))
+    
+    return kinetic_energy, potential_energy
+    
 def main():
 
     # Intial Simulation State
-    number_of_particles = 10
+    number_of_particles = 50
     current_time = 0
-    end_time = 10
+    end_time = 5
     time_step = 0.01
     softening = 0.01
-    grav_constant = 1
+    grav_constant = 2
     real_time_plotting = True
     
     # Find the integer number of time steps in the simulation
@@ -75,6 +103,17 @@ def main():
     # Create a second plot to track the KinEnergy and PotEnergy
     ax2 = plt.subplot(grid[2,0])
 
+    #Get Energies
+    KE, PE = getEnergy(positions, mass, grav_constant, velocities)
+
+    pos_save = np.zeros((number_of_particles,3,number_of_time_steps+1))
+    pos_save[:,:,0] = positions
+    KE_save = np.zeros(number_of_time_steps+1)
+    KE_save[0] = KE
+    PE_save = np.zeros(number_of_time_steps+1)
+    PE_save[0] = PE
+    t_all = np.arange(number_of_time_steps+1)*time_step
+
 
     # Step through each time interval
     for i in range(number_of_time_steps):
@@ -91,10 +130,19 @@ def main():
         # Step foward in time
         current_time += time_step
 
+        KE, PE  = getEnergy( positions, mass, grav_constant, velocities )
+
+        pos_save[:,:,i+1] = positions
+        KE_save[i+1] = KE
+        PE_save[i+1] = PE
+
         # If were real-time plotting or after time_step -1 intervals; plot the figure
         if real_time_plotting or (i == time_step-1):
             plt.sca(ax1)
             plt.cla()
+            xx = pos_save[:,0,max(i-50,0):i+1]
+            yy = pos_save[:,1,max(i-50,0):i+1]
+            plt.scatter(xx,yy,s=1,color=[.7,.7,1])
             plt.scatter(positions[:,0],positions[:,1],s=20,color='blue')
             ax1.set(xlim=(-2, 2), ylim=(-2, 2))
             ax1.set_aspect('equal', 'box')
@@ -103,6 +151,9 @@ def main():
 			
             plt.sca(ax2)
             plt.cla()
+            plt.scatter(t_all,KE_save,color='red',s=1,label='KE' if i == number_of_time_steps-1 else "")
+            plt.scatter(t_all,PE_save,color='blue',s=1,label='PE' if i == number_of_time_steps-1 else "")
+            plt.scatter(t_all,KE_save+PE_save,color='black',s=1,label='Etot' if i == number_of_time_steps-1 else "")
             ax2.set(xlim=(0, end_time), ylim=(-300, 300))
             ax2.set_aspect(0.007)
 			
@@ -122,4 +173,5 @@ def main():
 	    
 if __name__ == "__main__":
     main()
+
 
